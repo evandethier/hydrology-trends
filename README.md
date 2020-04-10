@@ -15,7 +15,9 @@ Coherent estimates of changing extreme discharge on a continental scale are hind
 <p align="center">
   <img src="/hydro-trends-figures/hclusters-fig1.png" width="85%" >
 </p>
+
 **All stations in the analysis are mapped, with hydro-regions indicated by color. For each hydro-region, average peak flow at each station normalized by annual peak flow is plotted in the lower panel.**
+
 
 In addition, significant changes in the timing and magnitude of precipitation have been observed in the United States and Canada, but these changes may not align with conditions necessary to generate a flood or drought. As a result, analysis of annual maximum and/or minimum flow may not show significant changes, despite fundamental changes occurring. To address this challenge, we not only analyze annual changes in high-flow and low-flow frequency, but also quantify changes occurring in each season.
 
