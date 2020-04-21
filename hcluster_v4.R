@@ -338,47 +338,47 @@ for(i in 1:n_clusters){
       # For entire cluster:
       # Get number of events/year for each N event recurrence interval
       # High-flow events (by cluster)
-      dt_count <- dt_extremes[, .(count = .N), by = .(water_year, n_peaks_sel, recur, timeframe_sel)]
+      dt_count <- dt_extremes[, .(count = .N), by = .(water_year, n_peaks_sel, recur, timeframe_sel)][
+        , ':='(cluster = n_cluster,
+               start_year = start_year)
+        ]
       # Low-flow events (by cluster)
-      dt_count_low <- dt_extremes_low[, .(count = .N), by = .(water_year, n_peaks_sel, recur, timeframe_sel)]
+      dt_count_low <- dt_extremes_low[, .(count = .N), by = .(water_year, n_peaks_sel, recur, timeframe_sel)][
+        , ':='(cluster = n_cluster,
+               start_year = start_year)
+        ]
       
       # for each station
       # Get number of events/year for each N event recurrence interval
       # High-flow events (individual stations)
-      dt_count_indiv <- dt_extremes[, .(count = .N), by = .(site_no, water_year, n_peaks_sel, recur, timeframe_sel)]
+      dt_count_indiv <- dt_extremes[, .(count = .N), by = .(site_no, water_year, n_peaks_sel, recur, timeframe_sel)][
+        , ':='(cluster = n_cluster,
+               start_year = start_year)
+        ]
       # Low-flow events (individual stations)
-      dt_count_low_indiv <- dt_extremes_low[, .(count = .N), by = .(site_no, water_year, n_peaks_sel, recur, timeframe_sel)]
+      dt_count_low_indiv <- dt_extremes_low[, .(count = .N), by = .(site_no, water_year, n_peaks_sel, recur, timeframe_sel)][
+        , ':='(cluster = n_cluster,
+               start_year = start_year)
+        ]
       
       # Calculate Cox-Lewis statistic (Z-Score) for each N event recurrence interval, each time period
       # High-flow events (by cluster)
       dt_z <- dt_count[,.(
                 z = (sum(count*water_year/sum(count)) - (end_year + start_year)/2)/
-                  ((end_year - start_year)/sqrt(12*sum(count)))), by = .(n_peaks_sel, timeframe_sel)][
-                    , ':='(cluster = n_cluster,
-                           start_year = start_year)
-                  ]
+                  ((end_year - start_year)/sqrt(12*sum(count)))), by = .(n_peaks_sel, timeframe_sel, cluster, start_year)]
       # Low flow events (by cluster)
       dt_z_low <- dt_count_low[,.(
                 z = (sum(count*water_year/sum(count)) - (end_year + start_year)/2)/
-                  ((end_year - start_year)/sqrt(12*sum(count)))), by = .(n_peaks_sel, timeframe_sel)][
-                    , ':='(cluster = n_cluster,
-                           start_year = start_year)
-                  ]
+                  ((end_year - start_year)/sqrt(12*sum(count)))), by = .(n_peaks_sel, timeframe_sel, cluster, start_year)]
       
       # High-flow events (individual stations)
       dt_z_indiv <- dt_count_indiv[,.(
                 z = (sum(count*water_year/sum(count)) - (end_year + start_year)/2)/
-                  ((end_year - start_year)/sqrt(12*sum(count)))), by = .(n_peaks_sel, timeframe_sel, site_no)][
-                    , ':='(cluster = n_cluster,
-                           start_year = start_year)
-                  ]
+                  ((end_year - start_year)/sqrt(12*sum(count)))), by = .(n_peaks_sel, timeframe_sel, site_no, cluster, start_year)]
       # Low-flow events (individual stations)
       dt_z_low_indiv <- dt_count_low_indiv[,.(
                 z = (sum(count*water_year/sum(count)) - (end_year + start_year)/2)/
-                  ((end_year - start_year)/sqrt(12*sum(count)))), by = .(n_peaks_sel, timeframe_sel, site_no)][
-                    , ':='(cluster = n_cluster,
-                           start_year = start_year)
-                  ]
+                  ((end_year - start_year)/sqrt(12*sum(count)))), by = .(n_peaks_sel, timeframe_sel, site_no, cluster, start_year)]
       
       ## PLOT SECTION
       # Plot Z-Scores for inidividual stations in a cluster
@@ -429,9 +429,9 @@ for(i in 1:n_clusters){
               # (only write once/cluster: after final start year calculation completed)
           if(k == length(start_years)){
             # High-flow events
-            fwrite(dt_z_cluster, paste0(wd_exports,'Q_trends_high_sensitivity_cl',n_cluster,'.csv')) 
+            fwrite(dt_z_cluster, paste0(wd_figures,'Q_trends_high_sensitivity_cl',n_cluster,'.csv')) 
             # Low-flow events
-            fwrite(dt_z_low_cluster, paste0(wd_exports,'Q_trends_low_sensitivity_cl',n_cluster,'.csv')) 
+            fwrite(dt_z_low_cluster, paste0(wd_figures,'Q_trends_low_sensitivity_cl',n_cluster,'.csv')) 
           }
           
           
@@ -556,7 +556,7 @@ for(i in 1:n_clusters){
     
 }
 
-#### AGGREGATE CLUSTER Z-SCORE PLOTS ####
+#### AGGREGATE CLUSTER AND STATION Z-SCORES ####
 
     # CREATE THIS PLOT:
       # For a given recurrence interval
@@ -576,6 +576,7 @@ for(i in 1:n_clusters){
       dt_z_comb_cluster_master <- na.omit(rbind(dt_z_cluster_master[,':='(event_type ='High-flow', event_sign = 1)],
                                         dt_z_low_cluster_master[,':='(event_type ='Low-flow', event_sign = -1)])[
                                           , hydroregion_name := hydroregion_names[cluster]
+                                    # Assign trend and signficance to a wetter/drier trend and p-value threshold < 0.05 vs 0.01
                                         ][,':='(cluster_color = ifelse(z * event_sign < -2.575, cluster_color_categ[1], # code to dark red
                                                                 ifelse(z * event_sign < -1.96, cluster_color_categ[2], # light red
                                                                 ifelse(z * event_sign > 2.575, cluster_color_categ[5], # dark blue
@@ -610,8 +611,12 @@ for(i in 1:n_clusters){
       dt_z_comb_indiv_cluster_master <- dt_z_comb_indiv_cluster_master[
             dt_z_comb_cluster_master][
               , ':='(z_cluster = i.z, i.z = NULL)
-              # Assign trend and signficance to a wetter/drier trend and p-value threshold < 0.05 vs 0.01
-              ]
+              # Make new column with number of stations per hydro-region (cluster)
+              ][start_year < 1970][, ':='(N_stations = .N), 
+                                       by = .(event_type, cluster, start_year, n_peaks_sel, timeframe_sel)][
+                                     ,':='(N_stations_max = max(N_stations)), 
+                                       by =.(cluster)
+                                         ]
       
       # Make a data.table of Z-Score significance thresholds for plotting
       significance_dt_high_low <- data.table(event_typ = rep(c('High-flow','Low-flow'),5), 
@@ -669,6 +674,27 @@ for(i in 1:n_clusters){
     ggsave(zplots_indiv_byCluster_comb, width = 7, height = 8, 
            filename = paste0(wd_figures,'Q_ZScore_indiv_combined_',start_year_sel,'.png'))
   
+#### PLOT FRACTION OF OPERATIONAL STATIONS BY DECADE ####
+    # Plot fraction of active stations by decade for each cluster
+    
+    cluster_nstations_ts_plot <- ggplot(dt_z_comb_indiv_cluster_master[timeframe_sel == 'Annual'], 
+                                        aes(x = start_year, y = N_stations/N_stations_max, color = factor(cluster), group = cluster)) + 
+      geom_line() +
+      scale_color_manual(values = cl_colors) +
+      season_facet +
+      theme(legend.position = c(0.75, 0.2),
+            legend.background = element_blank()) +
+      guides(color = guide_legend(keyheight = 1.25, title.hjust = 0.5, ncol = 3)) +
+      labs(
+        x = 'First decade of record',
+        y = 'Fraction of hydro-region stations operational',
+        color = 'Hydro-region'
+      )
+    
+    ggsave(cluster_nstations_ts_plot, width = 4, height = 4, 
+           filename = paste0(wd_exports,'cluster_nstations_ts_plot.pdf'), useDingbats = F)
+    ggsave(cluster_nstations_ts_plot, width = 4, height = 4, 
+           filename = paste0(wd_exports,'cluster_nstations_ts_plot.png'))
 #### VISUALIZE TREND SENSITIVITY TO START YEAR ####
 
     
@@ -1153,6 +1179,9 @@ ggsave(cluster_map_wParallels, width = 5, height = 6,
 
 #### GENERATE PIE PLOTS ####
 
+start_year_sel <- 1950
+n_peaks <- 5
+recurrence_sel <- 5
 pie_size <- 4
 # Change centroid position for cluster centroids that are too close to each other
 changeDistance <- function(cluster_sel){
@@ -1268,8 +1297,203 @@ ggsave(pie_trend_combined_plot, width = map_width, height = map_height,
 
 
 
+#### WITHIN-CLUSTER TREND CONSISTENCY ####
+# Make a table with percentage of individual stations
+# a) conforming to the cluster trend, statistically sig
+# b) conforming to the cluster trend, statistically insig.
+# c) not conforming to the cluster trend, statistically insig.
+# d) not conforming to the cluster trend, statistically sig.
+
+# Make categories for displaying within-cluster consistency
+consistency_categories <- c('Same trend, p < 0.05','Same trend, p > 0.05', 'Opposite trend, p > 0.05','Opposite trend, p < 0.05')
+
+# For each row in data.table (corresponding to a unique station, timeframe, recurrence interval, event type)
+# Categorize each station within a significantly changing cluster as conforming to the cluster trend 
+# (according to one of the consistency categories)
+dt_z_trend_consistent <- dt_z_comb_indiv_cluster_master[abs(z_cluster) > 1.96][
+  , ':='(consistency = 
+           ifelse(sign(z) == sign(z_cluster) & abs(z) > 1.96, consistency_categories[1],
+                  ifelse(sign(z) == sign(z_cluster), consistency_categories[2],
+                         ifelse(sign(z) != sign(z_cluster) & abs(z) < 1.96, consistency_categories[3],
+                                consistency_categories[4]))))
+  ]
+
+# Desired structure:
+# Rows: unique cluster, event_type (definitely, can always calculate average later)
+# n_event_sel, timeframe_sel (perhaps not, to check for consistency across record)
+# Columsn: Total cluster stations, 
+# N stations with same sign [significant, not signficant],
+# N stations with opposite sign [significant, not significant]
+dt_z_trend_consistent_table <- dt_z_trend_consistent[, .(
+  consistent_sig = sum(consistency == consistency_categories[1])/.N,
+  consistent_nsig = sum(consistency %in% consistency_categories[1:2])/.N,
+  inconsistent_nsig = sum(consistency %in% consistency_categories[3:4])/.N,
+  inconsistent_sig = sum(consistency == consistency_categories[4])/.N
+), 
+by = .(cluster, event_type)]
+
+dt_z_trend_consistent_summary <- dt_z_trend_consistent_table[,by = event_type, c(mean = lapply(.SD, mean),
+                                                                                 sd = lapply(.SD, sd)), 
+                                                             .SDcols = c('consistent_sig','consistent_nsig',
+                                                                         'inconsistent_nsig','inconsistent_sig')]
+
+dt_z_trend_consistent_plot_summary <- dt_z_trend_consistent[
+  , total_N := .N, by = cluster][,.(N_consistent = .N),by = .(cluster, consistency, total_N)][
+    , N_consistent_fraction := N_consistent/total_N][
+      consistency %chin% consistency_categories[3:4], ':='(N_consistent = -N_consistent,
+                                                           N_consistent_fraction = -N_consistent_fraction)
+      ][,consistency_factor:=factor(consistency, levels = consistency_categories[c(1,2,4,3)], ordered = T)]
+
+consistency_colors <- c('#286098','#529AE3','#E3AD52','#966D27')  
+consistency_fraction_breaks <- c(-1,-0.5,0,0.5,1)
+names(consistency_colors) <- consistency_categories
+consistency_bar_plot <- ggplot(dt_z_trend_consistent_plot_summary, 
+                               aes(x = reorder(paste0(cluster, '-', hydroregion_names[cluster]), -cluster), 
+                                   y = N_consistent_fraction, 
+                                   fill = consistency_factor)) + 
+  geom_bar(stat = 'identity') + 
+  scale_fill_manual(values = consistency_colors) +
+  scale_y_continuous(limits = c(-1,1), 
+                     breaks = consistency_fraction_breaks, 
+                     labels = abs(consistency_fraction_breaks)) + # so labels don't show fraction as negative
+  season_facet +
+  theme(legend.position = 'bottom',
+        plot.title = element_text(hjust = 0.5)) +
+  guides(fill = guide_legend(nrow = 2,reverse = TRUE)) +
+  labs(x = 'Hydro-region',
+       y = 'Fraction of stations conforming to hydro-region trend',
+       fill = 'Cluster consistency',
+       title = paste0('< Opposite trend',' | ','Same trend >      ')) +
+  rotate()
+
+ggsave(consistency_bar_plot, width = 5, height = 4, 
+       filename = paste0(wd_figures,'consistency_bar_plot.pdf'), useDingbats = F)
+ggsave(consistency_bar_plot, width = 5, height = 4, 
+       filename = paste0(wd_figures,'consistency_bar_plot.png'))
+
+#### QUANTIFY MAGNITUDE OF CHANGE IN FREQUENCY ####
+# Data.table with number of events per year, organized by cluster
+
+cluster_event_count <- na.omit(rbind(dt_count_cluster_master[,':='(event_type ='High-flow')],
+                                     dt_count_low_cluster_master[,':='(event_type ='Low-flow')])[
+                                       , hydroregion_name := hydroregion_names[cluster]])
+
+# Total number of stations per cluster, year
+N_stations_per_cluster <- dt_z_comb_indiv_cluster_master[,.(N_stations_decadal = max(N_stations)), 
+                                                         by = .(cluster, hydroregion_name, start_year)]
+
+setkey(cluster_event_count, cluster, start_year, hydroregion_name)
+setkey(N_stations_per_cluster, cluster, start_year, hydroregion_name)
+cluster_event_count_z <- cluster_event_count[N_stations_per_cluster]
+
+# Plot smoothed events/year for each n events 
+ggplot(cluster_event_count_z[start_year == 1950], aes(x = water_year, y = count/(n_peaks_sel * N_stations_decadal), 
+                                                      color = n_peaks_sel, group = n_peaks_sel)) +
+  geom_smooth(se = F) +
+  facet_grid(event_type + timeframe_sel~cluster) +
+  season_facet
+# Join to cluster significance table, filter to only include signficant changes
+# For each hydro-region/event-type/timeframe/recurrence interval
+# For the decade-long period with the selected start year and 2006-2016
+# Calculate number of events for each recurrence interval at each cluster divided by the number of stations in cluster
+decade_compare_early <- 1950
+decade_compare_late <- 1997
+n_years_compare <- 19
+decade_compare_early_range <- decade_compare_early:(decade_compare_early + n_years_compare)
+decade_compare_late_range <- decade_compare_late:(decade_compare_late + n_years_compare)
+
+# For each hydro-region (cluster) and for each event-type, timeframe, and recurrence interval (n_peaks_sel)
+# Count number of events in the reference and present periods (as defined above)
+cluster_recurrence_counts <- cluster_event_count_z[start_year == decade_compare_early][
+  water_year %in% c(decade_compare_early_range, decade_compare_late_range)][, 
+                                                                            decade:=ifelse(water_year %in% decade_compare_early_range, 'Reference','Present')][
+                                                                              ,.(n_events = sum(count)), by = .(decade, cluster, hydroregion_name, N_stations_decadal,timeframe_sel, n_peaks_sel, event_type)]
+
+# Convert rows corresponding to the reference period and present period to columns
+# Then calculate the centered percent change, (denominator is the period with the lower number of events)
+cluster_recurrence_change <- dcast(cluster_recurrence_counts, cluster + hydroregion_name + N_stations_decadal + 
+                                     timeframe_sel + n_peaks_sel + event_type ~ decade, value.var = 'n_events')[
+                                       , present_reference_change := (Present-Reference)/ifelse(Reference > Present, Present, Reference)
+                                       ]
+
+# For each cluster, event type, and timeframe:
+# Calculate how many recurrence interval categories are statistially signficant
+# Range is from -5 (all recurrence categories significantly drier) 
+# to 5 (all recurrence categories significantly wetter)
+dt_z_mode_z_byrecur <- dt_z_comb_cluster_master[start_year == decade_compare_early][
+  , .(cluster_trend_avg = sum(abs(z) > 1.96)*sign(sum(z))*sign(sum(event_sign))), 
+  by = .(cluster, event_type, event_sign, hydroregion_name, timeframe_sel)]
+
+# Join avg. recurrence significance to table of recurrence percent change for plotting
+setkey(dt_z_mode_z_byrecur, cluster, event_type, hydroregion_name, timeframe_sel)
+setkey(cluster_recurrence_change, cluster, event_type, hydroregion_name, timeframe_sel)
+
+cluster_recurrence_change <- cluster_recurrence_change[dt_z_mode_z_byrecur]
+
+# Summarize percent change for each hydro-region, event type (high-/low-flow)
+cluster_recurrence_change_summary <- cluster_recurrence_change[,.(mean_freq_change = round(mean(present_reference_change, na.rm = T),2),
+                                                                  se_freq_change = round(sd(present_reference_change, na.rm = T)/sqrt(.N),2)),
+                                                               by = .(cluster, hydroregion_name, N_stations_decadal, timeframe_sel, event_type)][
+                                                                 order(event_type)
+                                                               ]
+# Write percent change summary to drive
+fwrite(cluster_recurrence_change_summary, file = paste0(wd_figures, 'cluster_recurrence_change_summary.csv'))
+
+# Plot panel barplot: each panel a hydro-region, 
+# each bar shows the distribution of values (from each recurrence interval) for a given timeframe (season, annual)
+# Make a panel plot for high-flows and low flows
+# Two color options: a) blue for high-flows, red for low flows
+# b) gradient from red (all recurrence categories getting drier) 
+# through white (no recurrence categories changing signficantly)
+# to blue (all recurrence categories getting wetter)
+getFrequency_change_barplot <- function(event_type_sel){
+  event_type_sign <- ifelse(event_type_sel == 'Low-flow',-1,1)
+  event_type_color <- c('#3182bd','#de2d26')[event_type_sign]
+  cluster_recurrence_change_event_plot <- ggplot(cluster_recurrence_change[event_type == event_type_sel], 
+                                                 aes(x = factor(timeframe_sel, levels = rev(timeframe)), 
+                                                     # y = present_reference_change, fill = event_type)) +
+                                                     y = present_reference_change, fill = cluster_trend_avg)) +
+    geom_boxplot(outlier.shape = NA, size = 0.25) +
+    # geom_point() + # include points
+    facet_grid(reorder(paste0(cluster, '\n', gsub(' ', '\n',
+                                                  gsub('upper-Mid','upper- Mid', hydroregion_names[cluster]))), cluster)~
+                 .) +
+    # scale_fill_manual(values = event_type_color) +
+    # scale_fill_gradient2(low = 'red',high = 'navy') +
+    scale_fill_gradient2(low = '#de2d26',high = '#3182bd') +
+    season_facet +
+    geom_hline(aes(yintercept = 0), lty = 'dashed', color = 'black') +
+    theme(strip.text = element_text(size = 8),
+          plot.title = element_text(size = 10, vjust = 0, color = event_type_color)) +
+    labs(
+      x = '',
+      y = 'Fractional change\nin frequency',
+      title = paste0(event_type_sel, ' frequency change')
+    ) +
+    rotate()
+  if(event_type_sel == 'Low-flow'){
+    cluster_recurrence_change_event_plot <- cluster_recurrence_change_event_plot + 
+      scale_y_reverse(limits = c(3.5,-3.5))}else{
+        cluster_recurrence_change_event_plot <- cluster_recurrence_change_event_plot + 
+          scale_y_continuous(limits = c(-3.5,3.5))
+      }
+  return(cluster_recurrence_change_event_plot)
+}
+# Make panel plot for high- and low-flows
+cluster_recurrence_change_plot <- lapply(c('High-flow','Low-flow'),getFrequency_change_barplot)
+
+# Combine high- and low-flows panels into one side-by-side plot
+cluster_recurrence_change_comb_plot <- ggpubr::ggarrange(plotlist = cluster_recurrence_change_plot, 
+                                                         ncol = 2, align = 'v', labels = c('A','B'))
+
+ggsave(cluster_recurrence_change_comb_plot, width = 6, height = 8, 
+       filename = paste0(wd_figures,'cluster_recurrence_change_comb_plot.pdf'), useDingbats = F)
+ggsave(cluster_recurrence_change_comb_plot, width = 6, height = 8, 
+       filename = paste0(wd_figures,'cluster_recurrence_change_comb_plot.png'))
+
 #####
 #### IN DEVELOPMENT ####
+
 
 #### DOWNLOAD CLIMATE DATA (TEMPERATURE) ####
 
