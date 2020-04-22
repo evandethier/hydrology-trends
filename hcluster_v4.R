@@ -969,6 +969,7 @@ geom_custom <-  function(mapping = NULL,
 # a) Function creates a map of trends for that season, data for ggplot is entire dataframe of Z-Scores
 # b) Facet ggplot by timeframe_sel (season) and event_type (high-flow/low-flow)
 # Plot annual trends in high-flow and low flow
+axis_text_size = 8
 getQtrend_plot <- function(start_year_sel, recurrence_sel){
   stations_sig <- station_change_master[start_year == start_year_sel & 
                                                    # timeframe_sel == season_sel & 
@@ -1015,7 +1016,9 @@ getQtrend_plot <- function(start_year_sel, recurrence_sel){
       guides(fill = guide_legend(keyheight = 1, keywidth = 0.2, title.hjust = 0.5, ncol = 1)) +
       theme(
             # legend.position = c(0.95,0.3),
-            strip.text = element_text(size = 10),
+            strip.text = element_text(size = axis_text_size + 2),
+            axis.text = element_text(size = axis_text_size),
+            axis.title = element_text(size = axis_text_size),
             legend.position = 'none',
             legend.background = element_blank(),
             legend.key = element_blank()
@@ -1047,6 +1050,9 @@ getQtrend_plot <- function(start_year_sel, recurrence_sel){
                  theme(axis.title = element_blank(),
                        plot.background = element_blank(),
                        legend.position = 'none',
+                       plot.margin = margin(t = 0, r = 0, b = 0.02, l = 0.02, unit = "pt"),
+                       axis.ticks.length = unit(0.1, 'pt'),
+                       axis.text = element_text(size = axis_text_size-3),
                        strip.text = element_blank(),
                        strip.background = element_blank()
                  ))
@@ -1058,7 +1064,7 @@ getQtrend_plot <- function(start_year_sel, recurrence_sel){
     cluster_map_raw_wHI <- cluster_trend_map + 
       facet_wrap(~timeframe_sel, nrow = 2) +
       geom_custom(data = HI_inset_list, aes(grob = grob),
-                  xmin = 0, ymin = 0, xmax = 0.27, ymax = 0.29)
+                  xmin = 0, ymin = 0, xmax = 0.25, ymax = 0.27)
 
     return(cluster_map_raw_wHI)
   }
@@ -1074,8 +1080,8 @@ getQtrend_plot <- function(start_year_sel, recurrence_sel){
   cluster_low_trend_map <- ggpubr::ggarrange(cluster_low_trend_map_ann,
                                              cluster_low_trend_map_month, 
                                       nrow = 2, common.legend = F, heights = c(1,1.2), labels = c('C','D'))
-  map_width <- 5.75
-  map_height <- 7.5
+  map_width <- 4
+  map_height <- 5.5
   ggsave(cluster_high_trend_map, width = map_width, height = map_height, 
          filename = paste0(wd_figures,'cluster_high_trend_map_', start_year_sel, '_n', recurrence_sel,'.pdf'), useDingbats = F)
   ggsave(cluster_high_trend_map, width = map_width, height = map_height, 
@@ -1257,7 +1263,7 @@ getPie_combined_maps <- function(event_type_sel){
       # legend.position = c(0.85,0.3),
       # legend.background = element_blank(),
       # legend.key = element_blank(),
-      plot.title = element_text(size = strip_text_size* 1.4)) +
+      plot.title = element_text(size = strip_text_size)) +
     labs(
       x = 'Longitude',
       y = 'Latitude',
