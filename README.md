@@ -26,7 +26,7 @@ In addition, significant changes in the timing and magnitude of precipitation ha
 Seasonal analysis of changes extreme high- and low-flow event frequency show increased likelihood of extreme events in many regions in the United States.
 
 <p align="center">
-  <img src="/hydro-trends-figures/hclusters-fig2.png" width="85%" >
+  <img src="/hydro-trends-figures/hclusters-fig3.png" width="85%" >
 </p>
 
 **Stations with statistically significant trends toward wetter conditions (increased high-flow frequency or decreased low-flow frequency) that match their hydro-region trend are colored blue. Stations with statistically significant trends toward drier conditions (decreased high-flow frequency or increased low-flow frequency) that match their hydroregion trend are colored red.**
